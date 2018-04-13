@@ -40,7 +40,8 @@ namespace Soundpiercer.Plugin
             yield return new WaitForEndOfFrame();
 
             // Screen Capture and Wait
-            ScreenCapture.CaptureScreenshot("screenshot.png", 2);
+            ScreenCapture.CaptureScreenshot("screenshot.png", 2); // Unity 2017 or upper
+            // Application.CaptureScreenshot("screenshot.png", 2); // Unity 5
             string destination = Path.Combine(Application.persistentDataPath, "screenshot.png");
 
             yield return new WaitForSecondsRealtime(0.3f);
