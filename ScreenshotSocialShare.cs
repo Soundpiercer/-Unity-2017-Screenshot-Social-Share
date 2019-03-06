@@ -13,26 +13,30 @@ using System.Collections;
 /// </summary>
 public class ScreenshotSocialShare : MonoBehaviour
 {
-    private bool isProcessing = false;
-    private bool isFocus = false;
+    private bool _isProcessing = false;
+    private bool _isFocus = false;
 
     /// <summary>
     /// Call this method from other classes.
+    /// Screenshot Only : Share();
+    /// Screenshot with messages : Share("Example Popup Message", "Example Share Message");
     /// </summary>
-    public void Share()
+    /// <param name="popupMessage">Message that comes with 'Choose the App to Share' Popup </param>
+    /// <param name="shareMessage">Message that prints when the contents are shared to the app</param>
+    public void Share(string popupMessage = "", string shareMessage = "")
     {
-        if (!isProcessing && !Application.isEditor)
+        if (!_isProcessing && !Application.isEditor)
         {
-            StartCoroutine(ShareScreenshot("Share your world!", "Hello, World!"));
+            StartCoroutine(ShareScreenshot(popupMessage, shareMessage));
         }
     }
 
     /// <summary>
     /// The Process should be Asynchronous so we handle this method by IEnumerator.
     /// </summary>
-    private IEnumerator ShareScreenshot(string ShareEventName, string ShareMessageText)
+    private IEnumerator ShareScreenshot(string popupMessage, string shareMessage)
     {
-        isProcessing = true;
+        _isProcessing = true;
 
         // wait for graphics to render
         yield return new WaitForEndOfFrame();
@@ -40,38 +44,36 @@ public class ScreenshotSocialShare : MonoBehaviour
         // Screen Capture and Wait
         ScreenCapture.CaptureScreenshot("screenshot.png", 2); // Unity 2017 or upper
         // Application.CaptureScreenshot("screenshot.png", 2); // Unity 5
-        string destination = Path.Combine(Application.persistentDataPath, "screenshot.png");
+        string filePath = Path.Combine(Application.persistentDataPath, "screenshot.png");
 
         yield return new WaitForSecondsRealtime(0.3f);
 
         // The Sharing Process varies by each Android Device's OS Level. 
         var apiInfo = new AndroidJavaClass("android.os.Build$VERSION");
         var apiLevel = apiInfo.GetStatic<int>("SDK_INT");
-		
-        if (apiLevel > 25) // Android 7.1 Nougat, 8 Oreo, 9 Pie
+
+        if (apiLevel > 25) // Android 7.1 Nougat ~ 
         {
-            yield return StartCoroutine(AndroidOreoShareEnumerator(filePath, string.Empty, string.Empty));
+            yield return StartCoroutine(AndroidOreoShareEnumerator(filePath, popupMessage, shareMessage));
         }
         else // ~ Android 7.0 Nougat
         {
-			yield return StartCoroutine(AndroidNougatShareEnumerator(filePath, string.Empty, string.Empty));            
+            yield return StartCoroutine(AndroidNougatShareEnumerator(filePath, popupMessage, shareMessage));
         }
 
         // won't proceed until the app restores its focus
-        yield return new WaitUntil(() => isFocus);
+        yield return new WaitUntil(() => _isFocus);
 
         // End
-        isProcessing = false;
+        _isProcessing = false;
         yield break;
     }
-	
-	/// <summary>
-	/// Sharing Process (~ API Level 24)
+
+    /// <summary>
+    /// Sharing Process (~ API Level 24)
     /// </summary>
-	/// <param name="_path">Image path.</param>
-	/// <param name="_popupMessage">Message that comes with 'Choose the App to Share' Popup </param>
-	/// <param name="_shareMessage">Message that prints when the contents are shared to the app</param>
-	private IEnumerator AndroidNougatShareEnumerator(string _path, string _popupMessage, string _shareMessage)
+    /// <param name="path">Image path.</param>
+    private IEnumerator AndroidNougatShareEnumerator(string path, string popupMessage, string shareMessage)
     {
         // Set Events (Unity)
         AndroidJavaClass unity = new AndroidJavaClass("com.unity3d.player.UnityPlayer");
@@ -84,29 +86,27 @@ public class ScreenshotSocialShare : MonoBehaviour
         intentObject.Call<AndroidJavaObject>("setAction", intentClass.GetStatic<string>("ACTION_SEND"));
 
         // Set Text Message
-        intentObject.Call<AndroidJavaObject>("putExtra", intentClass.GetStatic<string>("EXTRA_TEXT"), _shareMessage);
+        intentObject.Call<AndroidJavaObject>("putExtra", intentClass.GetStatic<string>("EXTRA_TEXT"), shareMessage);
 
         // Set Image
         AndroidJavaClass uriClass = new AndroidJavaClass("android.net.Uri");
-        AndroidJavaObject uriObject = uriClass.CallStatic<AndroidJavaObject>("parse", "file://" + _path);
+        AndroidJavaObject uriObject = uriClass.CallStatic<AndroidJavaObject>("parse", "file://" + path);
 
         intentObject.Call<AndroidJavaObject>("putExtra", intentClass.GetStatic<string>("EXTRA_STREAM"), uriObject);
         intentObject.Call<AndroidJavaObject>("setType", "image/png");
 
         // START!
-        AndroidJavaObject chooser = intentClass.CallStatic<AndroidJavaObject>("createChooser", intentObject, _popupMessage);
+        AndroidJavaObject chooser = intentClass.CallStatic<AndroidJavaObject>("createChooser", intentObject, popupMessage);
         currentActivity.Call("startActivity", chooser);
 
         yield return new WaitForSecondsRealtime(1.0f);
     }
 
-	/// <summary>
-	/// Sharing Process (API Level 25 ~)
+    /// <summary>
+    /// Sharing Process (API Level 25 ~)
     /// </summary>
-	/// <param name="_path">Image path.</param>
-	/// <param name="_popupMessage">Message that comes with 'Choose the App to Share' Popup </param>
-	/// <param name="_shareMessage">Message that prints when the contents are shared to the app</param>
-    private IEnumerator AndroidOreoShareEnumerator(string _path, string _popupMessage, string _shareMessage)
+    /// <param name="path">Image path.</param>
+    private IEnumerator AndroidOreoShareEnumerator(string path, string popupMessage, string shareMessage)
     {
         // Set Events (Unity)
         AndroidJavaClass unity = new AndroidJavaClass("com.unity3d.player.UnityPlayer");
@@ -119,13 +119,13 @@ public class ScreenshotSocialShare : MonoBehaviour
         intentObject.Call<AndroidJavaObject>("setAction", intentClass.GetStatic<string>("ACTION_SEND"));
 
         // Set Text Message
-        intentObject.Call<AndroidJavaObject>("putExtra", intentClass.GetStatic<string>("EXTRA_TEXT"), _shareMessage);
+        intentObject.Call<AndroidJavaObject>("putExtra", intentClass.GetStatic<string>("EXTRA_TEXT"), shareMessage);
 
         // Set Image
         AndroidJavaClass uriClass = new AndroidJavaClass("android.support.v4.content.FileProvider");
         AndroidJavaClass fileClass = new AndroidJavaClass("java.io.File");
 
-        AndroidJavaObject fileObject = new AndroidJavaObject("java.io.File", _path);
+        AndroidJavaObject fileObject = new AndroidJavaObject("java.io.File", path);
         AndroidJavaObject stringObject = new AndroidJavaObject("java.lang.String", "com.Colortronics.SliteDev.share.fileprovider");
 
         AndroidJavaObject uriObject = uriClass.CallStatic<AndroidJavaObject>("getUriForFile", currentActivity, stringObject, fileObject);
@@ -134,14 +134,14 @@ public class ScreenshotSocialShare : MonoBehaviour
         intentObject.Call<AndroidJavaObject>("setType", "image/png");
 
         // START!
-        AndroidJavaObject chooser = intentClass.CallStatic<AndroidJavaObject>("createChooser", intentObject, _popupMessage);
+        AndroidJavaObject chooser = intentClass.CallStatic<AndroidJavaObject>("createChooser", intentObject, popupMessage);
         currentActivity.Call("startActivity", chooser);
 
         yield return new WaitForSecondsRealtime(1.0f);
     }
 
-    private void OnApplicationFocus(bool _focus)
+    private void OnApplicationFocus(bool focus)
     {
-        isFocus = _focus;
+        _isFocus = focus;
     }
 }
