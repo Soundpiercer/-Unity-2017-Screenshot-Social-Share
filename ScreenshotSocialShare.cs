@@ -13,8 +13,8 @@ using System.Collections;
 /// </summary>
 public class ScreenshotSocialShare : MonoBehaviour
 {
-    private bool _isProcessing = false;
-    private bool _isFocus = false;
+    private bool isProcessing = false;
+    private bool isFocus = false;
 
     /// <summary>
     /// Call this method from other classes.
@@ -25,7 +25,7 @@ public class ScreenshotSocialShare : MonoBehaviour
     /// <param name="shareMessage">Message that prints when the contents are shared to the app</param>
     public void Share(string popupMessage = "", string shareMessage = "")
     {
-        if (!_isProcessing && !Application.isEditor)
+        if (!isProcessing && !Application.isEditor)
         {
             StartCoroutine(ShareScreenshot(popupMessage, shareMessage));
         }
@@ -36,7 +36,7 @@ public class ScreenshotSocialShare : MonoBehaviour
     /// </summary>
     private IEnumerator ShareScreenshot(string popupMessage, string shareMessage)
     {
-        _isProcessing = true;
+        isProcessing = true;
 
         // wait for graphics to render
         yield return new WaitForEndOfFrame();
@@ -62,10 +62,10 @@ public class ScreenshotSocialShare : MonoBehaviour
         }
 
         // won't proceed until the app restores its focus
-        yield return new WaitUntil(() => _isFocus);
+        yield return new WaitUntil(() => isFocus);
 
         // End
-        _isProcessing = false;
+        isProcessing = false;
         yield break;
     }
 
@@ -142,6 +142,6 @@ public class ScreenshotSocialShare : MonoBehaviour
 
     private void OnApplicationFocus(bool focus)
     {
-        _isFocus = focus;
+        isFocus = focus;
     }
 }
